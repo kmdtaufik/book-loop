@@ -74,6 +74,10 @@ class LoginScreen(ctk.CTkFrame):
         success, message = self.winfo_toplevel().api.login(email, password)
         if success:
              self.error_label.configure(text="")
+             # Save session
+             # The token is already in api_client but we need to pass it to save_session or get it from api
+             token = self.winfo_toplevel().api.token
+             self.winfo_toplevel().save_session(token)
              self.on_login_success()
         else:
             self.error_label.configure(text=message, text_color="#FF5555")

@@ -1,11 +1,16 @@
 import customtkinter as ctk
+import keyring
 from api_client import BookLoopAPI
 from ui.login_screen import LoginScreen
 from ui.dashboard_screen import DashboardScreen
 from ui.register_screen import RegisterScreen
+from ui.swaps_screen import SwapsScreen
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
+
+SERVICE_ID = "BookLoop_Desktop"
+USER_KEY = "auth_token"
 
 class BookLoopApp(ctk.CTk):
     def __init__(self):
@@ -30,8 +35,11 @@ class BookLoopApp(ctk.CTk):
         # Initialize screens
         self.init_frames()
 
-        # Show Login Screen initially
-        self.show_frame("LoginScreen")
+        # Try to load session
+        if self.load_session():
+            self.show_dashboard()
+        else:
+            self.show_frame("LoginScreen")
 
     def init_frames(self):
         # We only create LoginScreen and RegisterScreen initially. Dashboard requires login.
@@ -46,12 +54,24 @@ class BookLoopApp(ctk.CTk):
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         frame.tkraise()
+        if page_name == "SwapsScreen" or page_name == "DashboardScreen":
+             # Refresh data if possible
+             if hasattr(frame, "load_data"):
+                 frame.load_data()
+            # If dashboard, maybe refresh books.
+             if hasattr(frame, "load_books"):
+                 frame.load_books()
 
     def on_login_success(self):
         # Create DashboardScreen now that we are logged in
         dashboard_frame = DashboardScreen(self.container)
         self.frames["DashboardScreen"] = dashboard_frame
         dashboard_frame.grid(row=0, column=0, sticky="nsew")
+
+        # Create SwapsScreen
+        swaps_frame = SwapsScreen(self.container)
+        self.frames["SwapsScreen"] = swaps_frame
+        swaps_frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("DashboardScreen")
 
@@ -64,6 +84,48 @@ class BookLoopApp(ctk.CTk):
         self.show_frame("LoginScreen")
 
     def on_back_to_login(self):
+        self.show_frame("LoginScreen")
+
+    def show_swaps(self):
+        self.show_frame("SwapsScreen")
+
+    def show_dashboard(self):
+        self.show_frame("DashboardScreen")
+
+    def save_session(self, token):
+        self.token = token
+        self.api.token = token
+        try:
+            keyring.set_password(SERVICE_ID, USER_KEY, token)
+        except Exception as e:
+            print(f"Failed to save session: {e}")
+
+    def load_session(self):
+        try:
+            token = keyring.get_password(SERVICE_ID, USER_KEY)
+            if token:
+                self.token = token
+                self.api.token = token
+                # Verify token validity by calling /me
+                user = self.api.get_me()
+                if user:
+                    self.on_login_success() # Setup dashboard frames
+                    return True
+                else:
+                    return False
+        except Exception as e:
+            print(f"Failed to load session: {e}")
+            return False
+        return False
+
+    def logout(self):
+        try:
+            keyring.delete_password(SERVICE_ID, USER_KEY)
+        except:
+            pass
+        self.token = None
+        self.api.token = None
+        # Clean up frames if needed
         self.show_frame("LoginScreen")
 
 if __name__ == "__main__":
