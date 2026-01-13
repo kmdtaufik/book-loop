@@ -96,13 +96,6 @@ class BookLoopAPI:
     def get_me(self):
         """Fetches current user info"""
         if not self.token: return None
-        # We didn't create /users/me yet in backend!
-        # I need to add that route or use existing knowledge.
-        # Wait, Week 2 "Authentication System" usually includes /me.
-        # Checking app/api/routes/auth.py or users.py...
-        # I recall viewing auth.py earlier and it only had login/register.
-        # I should add /users/me to the backend or I'm stuck.
-        # I'll assume I'll add it in the next step or right now.
         url = f"{self.BASE_URL}/auth/me"
         headers = {"Authorization": f"Bearer {self.token}"}
         try:
@@ -114,6 +107,26 @@ class BookLoopAPI:
            return None
         except:
            return None
+
+    def update_profile(self, email=None, password=None, old_password=None):
+        """Updates user profile (email/password)"""
+        url = f"{self.BASE_URL}/auth/me"
+        headers = {"Authorization": f"Bearer {self.token}"}
+        data = {}
+        if email: data["email"] = email
+        if password: data["password"] = password
+        if old_password: data["old_password"] = old_password
+
+        try:
+            response = requests.put(url, json=data, headers=headers)
+            if response.status_code == 200:
+                return True, "Profile updated successfully"
+            else:
+                 try: detail = response.json().get("detail", "Update failed")
+                 except: detail = f"Update failed: {response.status_code}"
+                 return False, detail
+        except requests.RequestException as e:
+            return False, str(e)
 
     def get_my_swaps(self):
         """
@@ -132,12 +145,16 @@ class BookLoopAPI:
         except requests.RequestException:
             return []
 
-    def request_book(self, book_id):
+    def request_book(self, book_id, offered_book_id=None):
         """Returns (success, message)"""
         url = f"{self.BASE_URL}/transactions/request"
         headers = {"Authorization": f"Bearer {self.token}"}
+        payload = {"book_id": book_id}
+        if offered_book_id:
+            payload["offered_book_id"] = offered_book_id
+
         try:
-            response = requests.post(url, json={"book_id": book_id}, headers=headers)
+            response = requests.post(url, json=payload, headers=headers)
             if response.status_code == 200:
                 return True, "Request sent successfully"
             else:
@@ -186,3 +203,27 @@ class BookLoopAPI:
                 return False, response.text
         except requests.RequestException as e:
             return False, str(e)
+
+    def get_market_books(self):
+        """
+        Fetches all available books. (Filtering happens in UI)
+        """
+        return self.get_books()
+
+    def get_my_available_books(self):
+        """
+        Fetches available books. (Filtering happens in UI)
+        """
+        return self.get_books()
+
+    def get_market_books(self):
+        """
+        Fetches all available books. (Filtering happens in UI)
+        """
+        return self.get_books()
+
+    def get_my_available_books(self):
+        """
+        Fetches available books. (Filtering happens in UI)
+        """
+        return self.get_books()
