@@ -4,7 +4,7 @@ from pydantic import PostgresDsn
 class Settings(BaseSettings):
     DATABASE_URL: str
 
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     @property
     def ASYNC_DATABASE_URL(self) -> str:

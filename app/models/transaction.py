@@ -15,12 +15,14 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     book_id: Mapped[int] = mapped_column(ForeignKey("books.id"))
+    offered_book_id: Mapped[int | None] = mapped_column(ForeignKey("books.id"), nullable=True) # Direct Swap
     giver_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     receiver_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     status: Mapped[TransactionStatus] = mapped_column(Enum(TransactionStatus), default=TransactionStatus.REQUESTED)
     tracking_number: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    book: Mapped["Book"] = relationship()
+    book: Mapped["Book"] = relationship(foreign_keys=[book_id])
+    offered_book: Mapped["Book"] = relationship(foreign_keys=[offered_book_id])
     giver: Mapped["User"] = relationship(foreign_keys=[giver_id])
     receiver: Mapped["User"] = relationship(foreign_keys=[receiver_id])

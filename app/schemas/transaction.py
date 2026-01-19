@@ -4,6 +4,7 @@ from app.models.transaction import TransactionStatus
 
 class TransactionBase(BaseModel):
     book_id: int
+    offered_book_id: int | None = None
 
 class TransactionCreate(TransactionBase):
     pass
@@ -14,6 +15,7 @@ class TransactionUpdate(BaseModel):
 class TransactionResponse(BaseModel):
     id: int
     book_id: int
+    offered_book_id: int | None
     giver_id: int
     receiver_id: int
     status: TransactionStatus

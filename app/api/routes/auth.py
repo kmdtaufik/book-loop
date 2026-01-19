@@ -10,7 +10,10 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.schemas.user import UserCreate, Token, UserResponse
+from app.models.book import Book
+from app.models.transaction import Transaction, TransactionStatus
+from app.schemas.user import UserCreate, Token, UserResponse, UserUpdate
+from sqlalchemy import func
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -63,6 +66,62 @@ async def login(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+from app.models.book import Book, BookStatus
+from app.models.transaction import Transaction, TransactionStatus
+from app.schemas.user import UserCreate, Token, UserResponse, UserUpdate
+from sqlalchemy import func
+
+# ... imports ...
+
 @router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    # Calculate Stats
+    # Books Listed
+    listed_res = await db.execute(select(func.count(Book.id)).where(Book.owner_id == current_user.id))
+    current_user.books_listed = listed_res.scalar() or 0
+
+    # Books Swapped (Received)
+    swapped_res = await db.execute(select(func.count(Transaction.id)).where(
+        (Transaction.receiver_id == current_user.id) & (Transaction.status == TransactionStatus.COMPLETED)
+    ))
+    current_user.books_swapped = swapped_res.scalar() or 0
+
+    return current_user
+
+@router.put("/me", response_model=UserResponse)
+async def update_user_me(
+    user_in: UserUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    if user_in.email:
+        # Check uniqueness
+        result = await db.execute(select(User).where(User.email == user_in.email))
+        existing_user = result.scalars().first()
+        if existing_user and existing_user.id != current_user.id:
+             raise HTTPException(status_code=400, detail="Email already taken")
+        current_user.email = user_in.email
+
+    if user_in.password:
+        if not user_in.old_password:
+             raise HTTPException(status_code=400, detail="Old password required to change password")
+        if not security.verify_password(user_in.old_password, current_user.password_hash):
+             raise HTTPException(status_code=400, detail="Incorrect old password")
+        current_user.password_hash = security.get_password_hash(user_in.password)
+
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+
+    # Re-calculate stats for response consisteny
+    listed_res = await db.execute(select(func.count(Book.id)).where(Book.owner_id == current_user.id))
+    current_user.books_listed = listed_res.scalar() or 0
+    swapped_res = await db.execute(select(func.count(Transaction.id)).where(
+        (Transaction.receiver_id == current_user.id) & (Transaction.status == TransactionStatus.COMPLETED)
+    ))
+    current_user.books_swapped = swapped_res.scalar() or 0
+
     return current_user

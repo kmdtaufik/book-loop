@@ -18,7 +18,7 @@ async def request_book(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    # 1. Fetch the book
+    # 1. Fetch the target book
     result = await db.execute(select(Book).where(Book.id == tx_in.book_id))
     book = result.scalars().first()
     if not book:
@@ -30,29 +30,42 @@ async def request_book(
     if book.status != BookStatus.AVAILABLE:
         raise HTTPException(status_code=400, detail="Book is not available")
 
-    # 3. Check Points (User needs > 0 points)
-    if current_user.points < 1:
-         raise HTTPException(status_code=400, detail="Insufficient points. You need at least 1 point to request a book.")
+    # 3. Barter Logic vs Points Logic
+    offered_book = None
+    if tx_in.offered_book_id:
+        # Fetch offered book
+        res_offered = await db.execute(select(Book).where(Book.id == tx_in.offered_book_id))
+        offered_book = res_offered.scalars().first()
 
-    # 4. Atomic Transaction
-    # Deduct point from receiver (current_user)
-    current_user.points -= 1
+        if not offered_book:
+             raise HTTPException(status_code=404, detail="Offered book not found")
+        if offered_book.owner_id != current_user.id:
+             raise HTTPException(status_code=403, detail="You do not own the offered book")
+        if offered_book.status != BookStatus.AVAILABLE:
+             raise HTTPException(status_code=400, detail="Offered book is not available")
 
-    # Update book status
+        # Mark offered book pending
+        offered_book.status = BookStatus.PENDING
+
+    else:
+        # Point System Fallback (if no book offered)
+        if current_user.points < 1:
+            raise HTTPException(status_code=400, detail="Insufficient points. Offer a book or earn points.")
+        current_user.points -= 1
+
+    # Update target book status
     book.status = BookStatus.PENDING
 
     # Create Transaction
     new_tx = Transaction(
         book_id=book.id,
+        offered_book_id=offered_book.id if offered_book else None,
         giver_id=book.owner_id,
         receiver_id=current_user.id,
         status=TransactionStatus.REQUESTED
     )
 
     db.add(new_tx)
-    # db.add(current_user) # Already attached to session
-    # db.add(book) # Already attached to session
-
     await db.commit()
     await db.refresh(new_tx)
     return new_tx
