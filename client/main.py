@@ -1,8 +1,8 @@
 import customtkinter as ctk
 import keyring
 from api_client import BookLoopAPI
-from ui.login_screen import LoginScreen
 from ui.dashboard_screen import DashboardScreen
+from ui.login_screen import LoginScreen
 from ui.register_screen import RegisterScreen
 from ui.swaps_screen import SwapsScreen
 
