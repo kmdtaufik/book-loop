@@ -20,11 +20,14 @@ jobs:
       with:
         python-version: "3.11"
 
+    - name: Install uv
+      run: |
+        pip install uv
+
     - name: Install Dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install .
-        pip install pyinstaller
+        uv pip install --system pyinstaller
+        uv pip install --system asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
@@ -97,7 +100,7 @@ jobs:
 
   build-ubuntu:
     name: Build Ubuntu Package
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -107,11 +110,14 @@ jobs:
       with:
         python-version: "3.11"
 
+    - name: Install uv
+      run: |
+        pip install uv
+
     - name: Install Dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install .
-        pip install pyinstaller
+        uv pip install --system pyinstaller
+        uv pip install --system asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
@@ -181,14 +187,14 @@ jobs:
       run: |
         pacman -Syu --noconfirm
         pacman -S --noconfirm git base-devel python python-pip namcap
+        pip install --break-system-packages uv
 
     - uses: actions/checkout@v4
 
     - name: Install Python Dependencies
       run: |
-        python -m pip install --upgrade pip --break-system-packages
-        pip install . --break-system-packages
-        pip install pyinstaller --break-system-packages
+        uv pip install --system pyinstaller
+        uv pip install --system asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
