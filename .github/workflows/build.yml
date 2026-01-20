@@ -1,0 +1,239 @@
+name: Build Desktop Client
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+        pip install pyinstaller
+
+    - name: Build Executable
+      run: |
+        pyinstaller --noconsole --onefile --add-data "client/ui;client/ui" --add-data "icon.ico;." --name BookLoop --icon icon.ico client/main.py
+
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+
+    - name: Create Inno Setup Script
+      run: |
+        $script = @"
+        #define MyAppName "BookLoop"
+        #define MyAppVersion "0.1.0"
+        #define MyAppPublisher "BookLoop Team"
+        #define MyAppURL "https://github.com/kdx/book-loop"
+        #define MyAppExeName "BookLoop.exe"
+
+        [Setup]
+        AppId={{A7B8C9D0-E1F2-3A4B-5C6D-7E8F9A0B1C2D}
+        AppName={#MyAppName}
+        AppVersion={#MyAppVersion}
+        AppPublisher={#MyAppPublisher}
+        AppPublisherURL={#MyAppURL}
+        AppSupportURL={#MyAppURL}
+        AppUpdatesURL={#MyAppURL}
+        DefaultDirName={autopf}\{#MyAppName}
+        DisableProgramGroupPage=yes
+        LicenseFile=LICENSE
+        OutputDir=installers
+        OutputBaseFilename=BookLoop-Setup-Windows-x64
+        Compression=lzma
+        SolidCompression=yes
+        WizardStyle=modern
+        ArchitecturesInstallIn64BitMode=x64
+
+        [Languages]
+        Name: "english"; MessagesFile: "compiler:Default.isl"
+
+        [Tasks]
+        Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+        [Files]
+        Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
+        [Icons]
+        Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+        Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+        [Run]
+        Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+        "@
+        $script | Out-File -FilePath "installer.iss" -Encoding UTF8
+
+    - name: Create LICENSE file if missing
+      run: |
+        if (-Not (Test-Path LICENSE)) {
+          "MIT License" | Out-File -FilePath "LICENSE" -Encoding UTF8
+        }
+
+    - name: Build Installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: BookLoop-Installer-Windows
+        path: installers/*.exe
+
+  build-ubuntu:
+    name: Build Ubuntu Package
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+        pip install pyinstaller
+
+    - name: Build Executable
+      run: |
+        pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+
+    - name: Create DEB Package Structure
+      run: |
+        mkdir -p bookloop-deb/DEBIAN
+        mkdir -p bookloop-deb/usr/bin
+        mkdir -p bookloop-deb/usr/share/applications
+        mkdir -p bookloop-deb/usr/share/pixmaps
+
+        # Copy executable
+        cp dist/bookloop bookloop-deb/usr/bin/
+        chmod +x bookloop-deb/usr/bin/bookloop
+
+        # Create control file
+        cat > bookloop-deb/DEBIAN/control << EOF
+        Package: bookloop
+        Version: 0.1.0
+        Section: utils
+        Priority: optional
+        Architecture: amd64
+        Maintainer: BookLoop Team <contact@bookloop.com>
+        Description: BookLoop Desktop Client
+         A desktop application for managing book exchanges and swaps.
+         Built with CustomTkinter and FastAPI backend.
+        Depends: libc6
+        EOF
+
+        # Create desktop entry
+        cat > bookloop-deb/usr/share/applications/bookloop.desktop << EOF
+        [Desktop Entry]
+        Version=1.0
+        Type=Application
+        Name=BookLoop
+        Comment=Book Exchange Platform
+        Exec=/usr/bin/bookloop
+        Terminal=false
+        Categories=Utility;
+        EOF
+
+        # Create icon if exists
+        if [ -f "icon.ico" ]; then
+          convert icon.ico bookloop-deb/usr/share/pixmaps/bookloop.png 2>/dev/null || true
+        fi
+
+    - name: Build DEB Package
+      run: |
+        dpkg-deb --build bookloop-deb
+        mv bookloop-deb.deb bookloop_0.1.0_amd64.deb
+
+    - name: Upload DEB Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: BookLoop-Package-Ubuntu
+        path: "*.deb"
+
+  build-arch:
+    name: Build Arch Linux Package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+    - name: Install Base Dependencies
+      run: |
+        pacman -Syu --noconfirm
+        pacman -S --noconfirm git base-devel python python-pip namcap
+
+    - uses: actions/checkout@v4
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+        pip install pyinstaller
+
+    - name: Build Executable
+      run: |
+        pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+
+    - name: Create PKGBUILD
+      run: |
+        cat > PKGBUILD << 'EOF'
+        # Maintainer: BookLoop Team <contact@bookloop.com>
+        pkgname=bookloop
+        pkgver=0.1.0
+        pkgrel=1
+        pkgdesc="BookLoop Desktop Client - Book Exchange Platform"
+        arch=('x86_64')
+        url="https://github.com/kdx/book-loop"
+        license=('MIT')
+        depends=('glibc')
+        source=()
+        md5sums=()
+
+        package() {
+          install -Dm755 "${startdir}/dist/bookloop" "${pkgdir}/usr/bin/bookloop"
+
+          # Create desktop entry
+          install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/bookloop.desktop" << DESKTOP
+        [Desktop Entry]
+        Version=1.0
+        Type=Application
+        Name=BookLoop
+        Comment=Book Exchange Platform
+        Exec=/usr/bin/bookloop
+        Terminal=false
+        Categories=Utility;
+        DESKTOP
+        }
+        EOF
+
+    - name: Build Package
+      run: |
+        useradd -m builder
+        chown -R builder:builder .
+        su builder -c 'makepkg --noconfirm'
+
+    - name: Upload Arch Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: BookLoop-Package-Arch
+        path: "*.pkg.tar.zst"
