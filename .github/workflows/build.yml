@@ -27,14 +27,12 @@ jobs:
     - name: Create venv and install dependencies
       run: |
         uv venv .venv
-        .venv\Scripts\activate
+        uv sync
         uv pip install pyinstaller
-        uv pip sync pyproject.toml || uv pip install asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
-        .venv\Scripts\activate
-        pyinstaller --noconsole --onefile --add-data "client/ui;client/ui" --add-data "icon.ico;." --name BookLoop --icon icon.ico client/main.py
+        .venv\Scripts\pyinstaller --noconsole --onefile --add-data "client/ui;client/ui" --add-data "icon.ico;." --name BookLoop --icon icon.ico client/main.py
 
     - name: Install Inno Setup
       run: |
@@ -120,14 +118,12 @@ jobs:
     - name: Create venv and install dependencies
       run: |
         uv venv .venv
-        source .venv/bin/activate
+        uv sync
         uv pip install pyinstaller
-        uv pip sync pyproject.toml || uv pip install asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
-        source .venv/bin/activate
-        pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
 
     - name: Create DEB Package Structure
       run: |
@@ -200,14 +196,12 @@ jobs:
     - name: Create venv and install dependencies
       run: |
         uv venv .venv
-        source .venv/bin/activate
+        uv sync
         uv pip install pyinstaller
-        uv pip sync pyproject.toml || uv pip install asyncpg bcrypt customtkinter email-validator fastapi httpx keyring passlib pillow pydantic-settings python-dotenv python-jose python-multipart requests sqlalchemy uvicorn
 
     - name: Build Executable
       run: |
-        source .venv/bin/activate
-        pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
 
     - name: Create PKGBUILD
       run: |
