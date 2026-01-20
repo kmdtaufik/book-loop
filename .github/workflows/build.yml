@@ -3,6 +3,8 @@ name: Build Desktop Client
 on:
   push:
     branches: [ "main", "master" ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
@@ -246,3 +248,28 @@ jobs:
       with:
         name: BookLoop-Package-Arch
         path: "*.pkg.tar.zst"
+
+  release:
+    name: Create Release
+    needs: [build-windows, build-ubuntu, build-arch]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/BookLoop-Installer-Windows/*.exe
+          artifacts/BookLoop-Package-Ubuntu/*.deb
+          artifacts/BookLoop-Package-Arch/*.pkg.tar.zst
+        draft: false
+        prerelease: false
+        generate_release_notes: true
