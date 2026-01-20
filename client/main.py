@@ -1,5 +1,7 @@
 import customtkinter as ctk
 import keyring
+import os
+import sys
 from api_client import BookLoopAPI
 from ui.dashboard_screen import DashboardScreen
 from ui.login_screen import LoginScreen
@@ -12,12 +14,29 @@ ctk.set_default_color_theme("blue")
 SERVICE_ID = "BookLoop_Desktop"
 USER_KEY = "auth_token"
 
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.join(base_path, relative_path)
+
 class BookLoopApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-
+        #app window setup
         self.title("BookLoop Desktop Client")
         self.geometry("1000x600")
+
+        # Set window icon
+        try:
+            icon_path = resource_path("icon.ico")
+            if os.path.exists(icon_path):
+                self.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Failed to load icon: {e}")
 
         # API Client
         self.api = BookLoopAPI()
