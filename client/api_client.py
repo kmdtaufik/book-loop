@@ -1,7 +1,7 @@
 import requests
 
 class BookLoopAPI:
-    BASE_URL = "http://localhost:8000"
+    BASE_URL = "https://bookloop-api.onrender.com"
 
     def __init__(self):
         self.token = None
