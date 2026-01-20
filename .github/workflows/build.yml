@@ -34,7 +34,7 @@ jobs:
 
     - name: Build Executable
       run: |
-        .venv\Scripts\pyinstaller --noconsole --onefile --add-data "client/ui;client/ui" --add-data "icon.ico;." --name BookLoop --icon icon.ico client/main.py
+        .venv\Scripts\pyinstaller --noconsole --onefile --add-data "client/ui;client/ui" --add-data "icon.ico;." --hidden-import=api_client --hidden-import=ui.dashboard_screen --hidden-import=ui.login_screen --hidden-import=ui.register_screen --hidden-import=ui.swaps_screen --hidden-import=ui.upload_dialog --hidden-import=ui.swap_dialog --paths=client --name BookLoop --icon icon.ico client/main.py
 
     - name: Install Inno Setup
       run: |
@@ -125,7 +125,7 @@ jobs:
 
     - name: Build Executable
       run: |
-        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --hidden-import=api_client --hidden-import=ui.dashboard_screen --hidden-import=ui.login_screen --hidden-import=ui.register_screen --hidden-import=ui.swaps_screen --hidden-import=ui.upload_dialog --hidden-import=ui.swap_dialog --paths=client --name bookloop client/main.py
 
     - name: Create DEB Package Structure
       run: |
@@ -203,7 +203,7 @@ jobs:
 
     - name: Build Executable
       run: |
-        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --name bookloop client/main.py
+        .venv/bin/pyinstaller --noconsole --onefile --add-data "client/ui:client/ui" --add-data "icon.ico:." --hidden-import=api_client --hidden-import=ui.dashboard_screen --hidden-import=ui.login_screen --hidden-import=ui.register_screen --hidden-import=ui.swaps_screen --hidden-import=ui.upload_dialog --hidden-import=ui.swap_dialog --paths=client --name bookloop client/main.py
 
     - name: Create PKGBUILD
       run: |
@@ -263,13 +263,16 @@ jobs:
       with:
         path: artifacts
 
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          artifacts/BookLoop-Installer-Windows/*.exe
-          artifacts/BookLoop-Package-Ubuntu/*.deb
-          artifacts/BookLoop-Package-Arch/*.pkg.tar.zst
+          artifacts/BookLoop-Installer-Windows/*
+          artifacts/BookLoop-Package-Ubuntu/*
+          artifacts/BookLoop-Package-Arch/*
         draft: false
         prerelease: false
         generate_release_notes: true
